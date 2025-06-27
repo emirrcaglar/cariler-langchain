@@ -3,7 +3,7 @@ from langchain.schema import HumanMessage, AIMessage
 from my_tools import (
     set_dataframe, set_vectorstore, 
     get_column_names, get_head, get_info, similarity_search,
-    describe_column, filter_data, get_value_counts, math_operation,
+    describe_column, filter_data, get_value_counts,
     group_by, apply_aggregation, select_columns
 )
 from token_count import count_tokens
@@ -31,7 +31,7 @@ set_dataframe(df)
 llm = ChatOpenAI(model="gpt-4o-mini")
 tools = [
     get_column_names, get_head, get_info, similarity_search,
-    describe_column, filter_data, get_value_counts, math_operation,
+    describe_column, filter_data, get_value_counts,
     group_by, apply_aggregation, select_columns
     ]
 

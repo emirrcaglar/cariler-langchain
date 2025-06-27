@@ -26,14 +26,15 @@ def get_column_names():
 
 @tool
 def select_columns(cols: List[str]):
-    """Select listed columns. This will create a new data object that stores all the data of the specified columnns."""
+    """Select listed columns. This will modify the global DataFrame to contain only these columns."""
+    global df
     if df is None:
         return "DataFrame not set. Please load the data first."  
     for col in cols: 
         if col not in df.columns:
             return f"Column '{col} not found. Available columns: {list(df.columns)}"    
-    return df[cols].to_string()
-
+    df = df[cols]
+    return f"DataFrame updated. Now contains only columns: {cols}."
 
 @tool
 def get_head(n: int = 5):
@@ -62,12 +63,13 @@ def describe_column(column_name: str):
 
 @tool
 def filter_data(condition: str):
-    """Filter the data based on a condition (e.g., 'age > 30')"""
+    """Filter the data based on a condition (e.g., 'age > 30'). This will modify the global DataFrame."""
+    global df
     if df is None:
         return "DataFrame not set. Please load the data first."
     try:
-        filtered_df = df.query(condition)
-        return filtered_df.to_string()
+        df = df.query(condition)
+        return f"DataFrame filtered by condition: '{condition}'."
     except Exception as e:
         return f"Error filtering data: {e}"
 
@@ -111,23 +113,6 @@ def apply_aggregation(aggregation_function: str):
         return result_df.to_string()
     except Exception as e:
         return f"An error occured during aggregation: {e}"
-
-@tool
-def math_operation(operation: str, numbers: List[float]) -> float:
-    """Perform mathematical operations on a list of numbers.
-    Supported operations: 'add', 'average'.
-    Example: math_operation('add', [1,2,3]) returns 6."""
-    if not numbers:
-        return 0.0
-    try:
-        if operation == 'add':
-            return sum(numbers)
-        elif operation == 'average':
-            return sum(numbers) / len(numbers)
-        else:
-            raise ValueError(f"Unsupported operation: {operation}")
-    except (TypeError, ValueError) as e:
-            raise ValueError(f"Invalid operation: {operation}")
 
 @tool
 def similarity_search(query: str, k: int = 3):
