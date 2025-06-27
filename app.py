@@ -36,6 +36,7 @@ tools = [
 # --- Agent Setup ---
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful assistant. You have two types of tools:\n1. Pandas tools (get_column_names, get_head, get_info) for inspecting a DataFrame.\n2. A vector search tool (similarity_search) for finding relevant information in a vector store.\nDecide which tool is best to answer the user's question."),
+    ("placeholder", "{chat_history}"),
     ("human", "{input}"),
     ("placeholder", "{agent_scratchpad}")
 ])
@@ -61,14 +62,17 @@ while True:
 
     if query.lower() == 'h':
         for message in chat_history:
-            print(message.content)
+            print(message)
         continue
 
     response = agent_executor.invoke({"input": query, "chat_history": chat_history})
     print(response["output"])
 
 
+
     chat_history.extend([
-        HumanMessage(content=query),
-        AIMessage(content=response["output"])
+        ("human", query),
+        ("ai", response["output"])
+        # HumanMessage(content=query),
+        # AIMessage(content=response["output"])
     ])
