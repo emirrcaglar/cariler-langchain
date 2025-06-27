@@ -3,18 +3,14 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 
-# Faker'ı Türkçe olarak başlatıyoruz
 fake = Faker('tr_TR')
 
-# Önce 20 adet şirket oluşturalım (bunlar tekrar edecek)
 sirketler = [fake.company() + ' A.Ş.' for _ in range(20)]
 tedarikciler = [fake.company() + ' Tedarik' for _ in range(10)]
 
-# Rastgele tarih oluşturma fonksiyonu (son 2 yıl içinde)
 def rastgele_tarih():
     return fake.date_time_between(start_date='-2y', end_date='now').strftime('%Y-%m-%d %H:%M:%S')
 
-# Veri yapısını oluşturuyoruz
 data = {
     'Islem ID': [],
     'Cari Kodu': [],
@@ -31,18 +27,17 @@ data = {
     'Bakiye': []
 }
 
-# 200 adet mock işlem oluşturuyoruz (daha fazla tekrar için)
 for i in range(1, 201):
     cari_tipi = random.choice(['Musteri', 'Tedarikci'])
     
     if cari_tipi == 'Musteri':
-        cari_adi = random.choice(sirketler)  # Aynı şirketlerden rastgele seçim
+        cari_adi = random.choice(sirketler)  
         islem_turu = random.choice(['Satis Faturasi', 'Satis Irsaliyesi', 'Tahsilat'])
-        cari_kodu = f"MUS-{sirketler.index(cari_adi)+1:03d}"  # Şirket indexine göre kod
+        cari_kodu = f"MUS-{sirketler.index(cari_adi)+1:03d}"  
     else:
-        cari_adi = random.choice(tedarikciler)  # Aynı tedarikçilerden rastgele seçim
+        cari_adi = random.choice(tedarikciler)  
         islem_turu = random.choice(['Alis Faturasi', 'Alis Irsaliyesi', 'Odeme'])
-        cari_kodu = f"TED-{tedarikciler.index(cari_adi)+1:03d}"  # Tedarikçi indexine göre kod
+        cari_kodu = f"TED-{tedarikciler.index(cari_adi)+1:03d}"  
     
     belge_tarihi = rastgele_tarih()
     vade_tarihi = (datetime.strptime(belge_tarihi, '%Y-%m-%d %H:%M:%S') + 
@@ -50,7 +45,6 @@ for i in range(1, 201):
     
     tutar = round(random.uniform(100, 10000), 2)
     
-    # Bakiye hesaplaması
     if islem_turu in ['Satis Faturasi', 'Alis Faturasi']:
         bakiye = tutar
     else:
@@ -70,16 +64,13 @@ for i in range(1, 201):
     data['Odeme Durumu'].append(random.choice(['Odendi', 'Bekliyor', 'Gecikmis']))
     data['Bakiye'].append(bakiye)
 
-# DataFrame oluşturma
 df = pd.DataFrame(data)
 
 import os
 
-# Veri dizinini oluşturma
 if not os.path.exists('data'):
     os.makedirs('data')
 
-# CSV'ye yazma
 output_path = 'data/cari_hesap_hareketleri.csv'
 df.to_csv(output_path, index=False)
 
