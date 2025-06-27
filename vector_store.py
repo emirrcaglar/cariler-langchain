@@ -1,13 +1,9 @@
 from langchain_community.document_loaders import CSVLoader
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import hashlib
-
 import os
-
-
 
 def get_file_hash(file_path: str) -> str:
     """Generate a hash for the file to detect changes."""

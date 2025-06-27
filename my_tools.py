@@ -112,8 +112,6 @@ def apply_aggregation(aggregation_function: str):
     except Exception as e:
         return f"An error occured during aggregation: {e}"
 
-
-
 @tool
 def math_operation(operation: str, numbers: List[float]) -> float:
     """Perform mathematical operations on a list of numbers.
