@@ -2,7 +2,8 @@ from dotenv import load_dotenv
 from langchain.schema import HumanMessage, AIMessage
 from my_tools import (
     set_dataframe, set_vectorstore, 
-    get_column_names, get_head, get_info, similarity_search
+    get_column_names, get_head, get_info, similarity_search,
+    describe_column, filter_data, get_value_counts
 )
 from token_count import count_tokens
 from vector_store import get_vectorstore
@@ -27,7 +28,10 @@ set_dataframe(df)
 
 # 3. Initialize LLM and Tools
 llm = ChatOpenAI(model="gpt-4o-mini")
-tools = [get_column_names, get_head, get_info, similarity_search]
+tools = [
+    get_column_names, get_head, get_info, similarity_search,
+    describe_column, filter_data, get_value_counts
+    ]
 
 # --- Agent Setup ---
 prompt = ChatPromptTemplate.from_messages([
@@ -41,6 +45,7 @@ agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 # --- Main Application Loop ---
 chat_history = []
+total_actual_tokens = 0
 while True:
     query = input(">>> ")
     
@@ -48,10 +53,10 @@ while True:
         break
     
     if query.lower() == 't':
-        total_tokens = 0
+        total_token_count = 0
         for message in chat_history:
-            total_tokens += count_tokens(message.content)
-        print(f"Total tokens in chat history: {total_tokens}")
+            total_token_count += count_tokens(message.content)
+        print(f"Total tokens in chat history: {total_token_count}")
         continue
 
     if query.lower() == 'h':
@@ -61,6 +66,7 @@ while True:
 
     response = agent_executor.invoke({"input": query, "chat_history": chat_history})
     print(response["output"])
+
 
     chat_history.extend([
         HumanMessage(content=query),

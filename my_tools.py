@@ -1,3 +1,4 @@
+from typing import List
 from langchain.tools import tool
 import pandas as pd
 import io
@@ -38,6 +39,52 @@ def get_info():
     buffer = io.StringIO()
     df.info(buf=buffer)
     return buffer.getvalue()
+
+@tool
+def describe_column(column_name: str):
+    """Get descriptive statistics for a specific column (count, mean, std, min, max, etc.)"""
+    if df is None:
+        return "DataFrame not set. Please load the data first."
+    if column_name not in df.columns:
+        return f"Column '{column_name} not found. Available columns: {list(df.columns)}"
+    return df[column_name].describe().to_string()
+
+@tool
+def filter_data(condition: str):
+    """Filter the data based on a condition (e.g., 'age > 30')"""
+    if df is None:
+        return "DataFrame not set. Please load the data first."
+    try:
+        filtered_df = df.query(condition)
+        return filtered_df.to_string()
+    except Exception as e:
+        return f"Error filtering data: {e}"
+
+@tool
+def get_value_counts(column_name: str, normalize=False):
+    """Get frequency counts of unique values in a column"""
+    if df is None:
+        return "DataFrame not set. Please load the data first."   
+    if column_name not in df.columns:
+        return f"Column '{column_name} not found. Available columns: {list(df.columns)}"   
+    return df[column_name].value_counts(normalize=normalize).to_string()
+
+@tool
+def math_operation(operation: str, numbers: List[float]) -> float:
+    """Perform mathematical operations on a list of numbers.
+    Supported operations: 'add', 'average'.
+    Example: math_operation('add', [1,2,3]) returns 6."""
+    if not numbers:
+        return 0.0
+    try:
+        if operation == 'add':
+            return sum(numbers)
+        elif operation == 'average':
+            return sum(numbers) / len(numbers)
+        else:
+            raise ValueError(f"Unsupported operation: {operation}")
+    except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid operation: {operation}")
 
 @tool
 def similarity_search(query: str, k: int = 3):
