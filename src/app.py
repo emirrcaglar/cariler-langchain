@@ -1,18 +1,13 @@
 from dotenv import load_dotenv
-from langchain.schema import HumanMessage, AIMessage
-from my_tools import (
-    set_dataframe, set_vectorstore, 
-    get_column_names, get_head, get_info, similarity_search,
-    describe_column, filter_data, get_value_counts,
-    group_by, apply_aggregation, select_columns
-)
-from token_count import count_tokens
-from vector_store import get_vectorstore
+import pandas as pd
+
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate
-import pandas as pd
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain.chains.conversation.memory import ConversationBufferMemory
 
+from vector_store import get_vectorstore
+from my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool
 load_dotenv()
 
 # --- Data and Tool Setup ---
@@ -21,19 +16,20 @@ file_path = "data/cari_hesap_hareketleri.csv"
 # 1. Initialize Vector Store
 embeddings = OpenAIEmbeddings()
 vectorstore = get_vectorstore(file_path, embeddings)
-set_vectorstore(vectorstore)
-
-# 2. Initialize DataFrame
 df = pd.read_csv(file_path)
-set_dataframe(df)
+
+
 
 # 3. Initialize LLM and Tools
-llm = ChatOpenAI(model="gpt-4o-mini")
-tools = [
-    get_column_names, get_head, get_info, similarity_search,
-    describe_column, filter_data, get_value_counts,
-    group_by, apply_aggregation, select_columns
-    ]
+llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0
+    )
+
+conversational_memory = ConversationBufferMemory(
+    memory_key="chat_history",
+    return_messages=True
+)
 
 # --- Agent Setup ---
 prompt = ChatPromptTemplate.from_messages([
@@ -47,24 +43,37 @@ prompt = ChatPromptTemplate.from_messages([
     ("placeholder", "{agent_scratchpad}")
 ])
 
+tools = [
+    DataFrameTransformTool(df=df), 
+    DataFrameAggregateTool(df=df), 
+    DataFrameInspectTool(df=df)
+    ]
+
+# from langchain.agents import initialize_agent
+
+# agent = initialize_agent(
+#     agent='chat-conversational-react-description',    
+#     tools=tools,
+#     llm=llm,
+#     verbose=True,
+#     max_iterations=3,
+#     early_stopping_method='generate',
+#     memory=conversational_memory
+# )
+
+# agent("Tedarikcilerin toplam bakiyelerini hesapla")
+
+
 agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 # --- Main Application Loop ---
 chat_history = []
-total_actual_tokens = 0
 while True:
     query = input(">>> ")
     
     if query.lower() == 'q':
         break
-    
-    if query.lower() == 't':
-        total_token_count = 0
-        for message in chat_history:
-            total_token_count += count_tokens(message.content)
-        print(f"Total tokens in chat history: {total_token_count}")
-        continue
 
     if query.lower() == 'h':
         for message in chat_history:

@@ -1,6 +1,6 @@
-__pycache__/
+**/__pycache__/
 .venv/
 chroma_db*/
 data/
 .env
-test.py
+# test.py

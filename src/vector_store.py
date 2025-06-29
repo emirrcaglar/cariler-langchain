@@ -56,3 +56,7 @@ def get_vectorstore(file_path: str, embeddings: OpenAIEmbeddings) -> Chroma:
         )
 
         return vectorstore
+    
+
+
+ 
