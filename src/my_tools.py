@@ -70,7 +70,7 @@ class DataFrameInspectTool(BaseTool):
         return self.df[column_name].describe().to_string()
 
     def _get_value_counts(self, column_name: str, normalize=False):
-        """Get frequency counts of unique values in a column"""
+        """Get frequency counts of unique values in a column. Useful to know what values are present in a column and how many times they occur."""
         if self.df is None:
             return "DataFrame not set. Please load the data first."   
         if column_name not in self.df.columns:
@@ -108,7 +108,7 @@ class DataFrameTransformTool(BaseTool):
                 return self._select_columns([col.strip() for col in params['columns']])
             elif action == "filter_data":
                 return self._filter_data(params['condition'].strip())
-            return "Invalid action. Use either 'group_by' or 'apply_aggregation' or 'print_dataframe'"
+            return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
         except Exception as e:
             error_message = f"Error processing input: {str(e)}"
             self.error_memory.append({'input': tool_input, 'error': error_message})
