@@ -1,10 +1,12 @@
 from langchain.tools import BaseTool
+from langchain_chroma import Chroma
 
 import io
 import pandas as pd
 from pydantic import Field
 from dotenv import load_dotenv
 from typing import List, Any, Optional
+import difflib
 
 load_dotenv()
 
@@ -32,9 +34,9 @@ class DataFrameInspectTool(BaseTool):
             elif action == "get_info":
                 return self._get_info()
             elif action == "describe_column":
-                return self._describe_column(params['column_name'])
+                return self._describe_column(params['column_name'].strip())
             elif action == "get_value_counts":
-                return self._get_value_counts(params['column_name'])
+                return self._get_value_counts(params['column_name'].strip())
             return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
         except Exception as e:
             return f"Error processing input: {str(e)}"
@@ -45,11 +47,11 @@ class DataFrameInspectTool(BaseTool):
             return "DataFrame not set. Please load the data first."
         return list(self.df.columns.values)
 
-    def _get_head(self, n: int = 5):
-        """Get the first n rows of the dataframe. Returns the rows as a string."""
+    def _get_head(self, column_count: int = 5):
+        """Get the first {column_count} rows of the dataframe. Returns the rows as a string."""
         if self.df is None:
             return "DataFrame not set. Please load the data first."
-        return self.df.head(n).to_string()
+        return self.df.head(column_count).to_string()
 
     def _get_info(self):
         """Get a concise summary of the dataframe, including the index dtype and columns, non-null values, and memory usage."""
@@ -81,13 +83,21 @@ class DataFrameTransformTool(BaseTool):
     description: str = """Useful for transforming and filtering DataFrame data. 
     Input should be a JSON string with two keys: 
     'action' (either 'select_columns' or 'filter_data'), 
-    and 'params' (dictionary of parameters)."""   
+    and 'params' ('columns' for select_columns, 'condition' for filter_data)."""   
 
     df: pd.DataFrame = Field(..., description="The pandas DataFrame to transform")
+    error_memory: List[dict] = Field(default_factory=list, description="Memory to store errors for repeated inputs")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.error_memory: List[dict] = []
 
     def _run(self, tool_input: str) -> str:
         """Main execution method required by BaseTool"""
+        # Count how many times this input has caused an error
+        error_count = sum(1 for error in self.error_memory if error['input'] == tool_input)
+        if error_count >= 3:
+            return f"Repeated error for input: {tool_input}. Skipping after 3 errors."
         try:
             import json
             data = json.loads(tool_input)
@@ -95,43 +105,54 @@ class DataFrameTransformTool(BaseTool):
             params = data['params']
 
             if action == "select_columns":
-                return self._select_columns(params['columns'])
+                return self._select_columns([col.strip() for col in params['columns']])
             elif action == "filter_data":
-                return self._filter_data(params['condition'])
-            return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
+                return self._filter_data(params['condition'].strip())
+            return "Invalid action. Use either 'group_by' or 'apply_aggregation' or 'print_dataframe'"
         except Exception as e:
-            return f"Error processing input: {str(e)}"
-
+            error_message = f"Error processing input: {str(e)}"
+            self.error_memory.append({'input': tool_input, 'error': error_message})
+            return error_message
 
     def _select_columns(self, columns: List[str]):
         """Select listed columns. This will modify the global DataFrame to contain only these columns."""
         if self.df is None:
-            return "DataFrame not set. Please load the data first."  
-        for col in columns: 
-            if col not in self.df.columns:
-                return f"Column '{col} not found. Available columns: {list(self.df.columns)}"    
-        self.df = self.df[columns]
-        return f"DataFrame updated. Now contains only columns: {columns}."
-
+            return "DataFrame not set. Please load the data first."
+        # Normalize DataFrame columns
+        df_cols = [col.upper().replace(" ", "_") for col in self.df.columns]
+        # Normalize input columns
+        columns_norm = [col.upper().replace(" ", "_") for col in columns]
+        missing = [col for col in columns_norm if col not in df_cols]
+        if missing:
+            suggestions = []
+            for col in missing:
+                match = difflib.get_close_matches(col, df_cols, n=1)
+                if match:
+                    suggestions.append(f"{col} (did you mean {match[0]}?)")
+                else:
+                    suggestions.append(col)
+            return f"Column(s) {suggestions} not found. Available columns: {df_cols}"
+        # Select columns using original names
+        selected = [self.df.columns[df_cols.index(col)] for col in columns_norm]
+        self.df = self.df[selected]
+        return f"DataFrame updated with selected columns: {selected}.\n{self.df.to_string()}"
 
     def _filter_data(self, condition: str):
-        """Filter the data based on a condition (e.g., 'age > 30'). This will modify the global DataFrame."""
         if self.df is None:
-            return "DataFrame not set. Please load the data first."
-        try:
-            df = self.df.query(condition)
-            return f"DataFrame filtered by condition: '{condition}'."
-        except Exception as e:
-            return f"Error filtering data: {e}"
+            raise ValueError("DataFrame not set. Please load the data first.")
+        self.df = self.df.query(condition)
+        return f"DataFrame filtered by condition '{condition}'.\n{self.df.to_string()}"
 
 
 class DataFrameAggregateTool(BaseTool):
     name: str = "dataframe_aggregator"
     description: str = """Useful for grouping and aggregating DataFrame data. 
     Input should be a JSON string with two keys: 
-    'action' (either 'group_by' or 'apply_aggregation'), 
-    and 'params' (dictionary of parameters)."""
-    df: pd.DataFrame = Field(..., description="The pandas DataFrame to analyze")
+    'action' ('apply_aggregation'), 
+    and 'params' (dictionary with 'group_by' and 'aggregation').
+    'group_by' should be a list of column names to group by,
+    aggregation should be a string like "min", "sum", etc.)"""
+    df: pd.DataFrame = Field(..., description="The pandas DataFrame to aggregate")
     grouped_data: Optional[Any] = Field(None, description="Stores grouped data for aggregation")
 
     def _run(self, tool_input: str) -> str:
@@ -142,17 +163,22 @@ class DataFrameAggregateTool(BaseTool):
             action = data['action']
             params = data['params']
 
-            if action == "group_by":
-                return self._group_by(params['columns'])
-            elif action == "apply_aggregation":
-                return self._apply_aggregation(params['function'])
-            return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
+            if not params['group_by']:
+                try:
+                    result = self.df.agg(params['aggregation'])
+                    return f"Aggregation result (no group): \n {result.to_string()}"
+                except Exception as e:
+                    return f"Aggregation failed: {str(e)}"
+            if action == "apply_aggregation":
+                self._group_by([col.strip() for col in params['group_by']])
+                return self._apply_aggregation(params['aggregation'])
+            return "Invalid action. Use 'apply_aggregation'"
         except Exception as e:
             return f"Error processing input: {str(e)}"
+            
     def _group_by(self, columns: List[str]) -> str:        
         """
         Group the data by given columns.
-        A groupby operation involves some combination of splitting the object, applying a function, and combining the results. 
         This can be used to group large amounts of data and compute operations on these groups.
         """
         if self.df.empty:
@@ -176,23 +202,32 @@ class DataFrameAggregateTool(BaseTool):
             return f"Aggregation failed: {str(e)}"
 
 
-
-
-
-
-
 class DataFrameAnalysisTool(BaseTool):
+    name: str = "dataframe_analyzer"
+    description: str = """Useful for semantically analyzing DataFrame. 
+    Input should be a JSON string with two keys: 
+    'action' ('similarity_search'), 
+    and 'params' (dictionary of parameters)."""
+    df: pd.DataFrame = Field(..., description="The pandas DataFrame to analyze")
+    vectorstore: Chroma = Field(..., description="The vectorstore to analyze")
 
-    def __init__(self, data, vectorstore=None):
-        self.df = pd.read_csv(data)
-        self.vectorstore = vectorstore
+    def _run(self, tool_input: str) -> str:
+        """Main execution method required by BaseTool"""
+        try:
+            import json
+            data = json.loads(tool_input)
+            action = data['action']
+            params = data['params']
 
+            if action == "similarity_search":
+                return self._similarity_search(params['columns'].strip())
+            return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
+        except Exception as e:
+            return f"Error processing input: {str(e)}"
 
-
-
-    # def similarity_search(query: str, k: int = 3):
-    #     """Perform a similarity search on the vector store for a given query."""
-    #     if vectorstore is None:
-    #         return "Vectorstore not set. Please load the data first."
-    #     results = vectorstore.similarity_search(query, k=k)
-    #     return "\n".join([doc.page_content for doc in results])
+    def _similarity_search(self, query: str, k: int = 3):
+        """Perform a similarity search on the vector store for a given query."""
+        if self.vectorstore is None:
+            return "Vectorstore not set. Please load the data first."
+        results = self.vectorstore.similarity_search(query, k=k)
+        return "\n".join([doc.page_content for doc in results])

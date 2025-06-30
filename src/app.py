@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains.conversation.memory import ConversationBufferMemory
 
 from vector_store import get_vectorstore
-from my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool
+from my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool, DataFrameAnalysisTool
 load_dotenv()
 
 # --- Data and Tool Setup ---
@@ -17,6 +17,7 @@ file_path = "data/cari_hesap_hareketleri.csv"
 embeddings = OpenAIEmbeddings()
 vectorstore = get_vectorstore(file_path, embeddings)
 df = pd.read_csv(file_path)
+df.columns = [col.upper().strip() for col in df.columns]
 
 
 
@@ -33,10 +34,13 @@ conversational_memory = ConversationBufferMemory(
 
 # --- Agent Setup ---
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful assistant. You have two types of tools:\n
-     1. Pandas tools (select_columns, get_column_names, get_head, get_info etc.) for inspecting a DataFrame.\n
+    ("system", """You are a helpful assistant. You work on financial data.
+     You have two types of tools:\n
+     1. Pandas tools (select_columns, get_column_names, group_by, get_head etc.) for inspecting a DataFrame.\n
      2. A vector search tool (similarity_search) for finding relevant information in a vector store.\n
      Decide which tool is best to answer the user's question.
+     Always use uppercase column names when referring to DataFrame columns.
+     Always use backtiks (`) around column names in queries.
      Turkish is your main output language."""),
     ("placeholder", "{chat_history}"),
     ("human", "{input}"),
@@ -45,27 +49,14 @@ prompt = ChatPromptTemplate.from_messages([
 
 tools = [
     DataFrameTransformTool(df=df), 
-    DataFrameAggregateTool(df=df), 
-    DataFrameInspectTool(df=df)
+    DataFrameAggregateTool(df=df), # type: ignore
+    DataFrameInspectTool(df=df),
+    DataFrameAnalysisTool(df=df, vectorstore=vectorstore)
     ]
 
-# from langchain.agents import initialize_agent
-
-# agent = initialize_agent(
-#     agent='chat-conversational-react-description',    
-#     tools=tools,
-#     llm=llm,
-#     verbose=True,
-#     max_iterations=3,
-#     early_stopping_method='generate',
-#     memory=conversational_memory
-# )
-
-# agent("Tedarikcilerin toplam bakiyelerini hesapla")
-
-
 agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+agent_executor = AgentExecutor(agent=agent, tools=tools,
+                                verbose=True, memory=conversational_memory)
 
 # --- Main Application Loop ---
 chat_history = []
