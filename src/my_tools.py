@@ -2,11 +2,11 @@ from langchain.tools import BaseTool
 from langchain_chroma import Chroma
 
 import io
+import difflib
 import pandas as pd
 from pydantic import Field
 from dotenv import load_dotenv
 from typing import List, Any, Optional
-import difflib
 
 load_dotenv()
 

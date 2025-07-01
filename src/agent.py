@@ -1,12 +1,14 @@
 from langchain.agents import AgentExecutor, create_openai_tools_agent
-
-from my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool, DataFrameAnalysisTool
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains.conversation.memory import ConversationBufferMemory
-from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from vector_store import get_vectorstore
+from langchain.chains.conversation.memory import ConversationBufferMemory
+
 import pandas as pd
+
+from src.vector_store import get_vectorstore
+from src.my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool, DataFrameAnalysisTool
+
+from dotenv import load_dotenv
 load_dotenv()
 
 # --- Data and Tool Setup ---

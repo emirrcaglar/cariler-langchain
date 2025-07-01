@@ -1,6 +1,4 @@
-from workflow import workflow
-
-chain = workflow.compile()
+from src.agent import agent_executor
 
 # --- Main Application Loop ---
 chat_history = []
@@ -15,9 +13,7 @@ while True:
             print(message)
         continue
 
-    result = chain.invoke({
+    result = agent_executor.invoke({
         "input": query,
         "chat_history": chat_history,
-        "agent_outcome": None,
-        "intermediate_steps": []
     })
