@@ -17,3 +17,5 @@ while True:
         "input": query,
         "chat_history": chat_history,
     })
+
+    print(result["output"])

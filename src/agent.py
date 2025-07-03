@@ -6,7 +6,7 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 import pandas as pd
 
 from src.vector_store import get_vectorstore
-from src.my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameTransformTool, DataFrameAnalysisTool
+from src.my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameFilterTool, DataFrameAnalysisTool
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -17,13 +17,12 @@ file_path = "data/cari_hesap_hareketleri.csv"
 # 1. Initialize Vector Store
 embeddings = OpenAIEmbeddings()
 vectorstore = get_vectorstore(file_path, embeddings)
-df = pd.read_csv(file_path)
-df.columns = [col.upper().strip() for col in df.columns]
+df = pd.read_csv(file_path, encoding="utf-8")
 
 # 3. Initialize LLM and Tools
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0
+    model="o4-mini-2025-04-16",
+    max_retries=3
     )
 
 conversational_memory = ConversationBufferMemory(
@@ -33,24 +32,28 @@ conversational_memory = ConversationBufferMemory(
 
 # --- Agent Setup ---
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful assistant. You work on financial data.
-     You have two types of tools:\n
-     1. Pandas tools (select_columns, get_column_names, group_by, get_head etc.) for inspecting a DataFrame.\n
-     2. A vector search tool (similarity_search) for finding relevant information in a vector store.\n
-     Decide which tool is best to answer the user's question.
-     Always use uppercase column names when referring to DataFrame columns.
-     Always use backtiks (`) around column names in queries.
-     Turkish is your main output language."""),
+    ("system", """
+    You are a data-agent who works on financial data.
+    You will work on the data with Pandas. You should first analyze the user prompt, extract parameters
+    and use them in a data filter operation using Pandas query (_filter_data() function in DataFrameTransformTool). If that fails, only then you are going to use different tools.
+    You have two types of tools:\n
+    1. A vector search tool (similarity_search) for finding relevant information in a vector store.\n
+    2. Pandas tools for inspecting a DataFrame.\n
+    Decide which tool is best to answer the user's question.\n
+    In your output, what tools you used, what was your instinct etc.
+    Turkish is your main output language.
+     """),
     ("placeholder", "{chat_history}"),
     ("human", "{input}"),
     ("placeholder", "{agent_scratchpad}")
 ])
 
+
 tools = [
-    DataFrameTransformTool(df=df), 
-    DataFrameAggregateTool(df=df), # type: ignore
+    DataFrameAnalysisTool(df=df, vectorstore=vectorstore),
     DataFrameInspectTool(df=df),
-    DataFrameAnalysisTool(df=df, vectorstore=vectorstore)
+    DataFrameFilterTool(df=df), 
+    DataFrameAggregateTool(df=df), # type: ignore
     ]
 
 
