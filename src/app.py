@@ -15,10 +15,11 @@ while True:
             print(message)
         continue
 
+    print("App: Agent invoke start...")
     result = agent_executor.invoke({
         "input": query,
         "chat_history": chat_history,
     })
-        
-
+    print("App: Agent invoke end...")
+    print("App: Agent output:")
     print(result["output"])

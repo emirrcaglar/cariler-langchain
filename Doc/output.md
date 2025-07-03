@@ -1,3 +1,65 @@
+> Prompt: Para birimlerine gore grupla ve hepsini USD'ye cevirerek sirala
+
+# Para Birimlerine Göre USD’ye Çevrilmiş Toplam Tutarlar ve Sıralama Raporu
+
+## 1. Özet
+Bu raporda, veri setindeki işlemler “Para Birimi” bazında gruplanmış; her bir para biriminin toplam tutarı, güncel döviz kurları kullanılarak USD’ye çevrilmiş ve USD cinsinden büyüklüğe göre sıralanmıştır. Analiz sonucunda, hangi para biriminde en yüksek USD tutarının yer aldığı tespit edilmiş, örnek veri sunulmuş ve finansal yönetim süreçlerinizi iyileştirecek önerilerde bulunulmuştur.
+
+---
+
+## 2. Ana Metrikler
+
+- **Toplam Kayıt Sayısı:** 1000
+- **Para Birimi Çeşidi:** 3
+
+| Para Birimi | Orijinal Toplam Tutar | Kur (→ USD)          | USD'ye Çevrilmiş Toplam |
+|-------------|----------------------:|---------------------:|------------------------:|
+| TRY         |           313 457,34  | 1,000000             |             313 457,34  |
+| USD         |           281 166,41  | 0,025055701          |               7 044,65  |
+| EUR         |           281 991,18  | 0,0212281958         |               5 986,14  |
+
+*Not: Kurlar, `currency_tool` aracılığıyla USD baz alınarak çekilmiştir.*
+
+---
+
+## 3. Dönüştürme ve Sıralama
+USD’ye çevrilmiş toplam tutarlar büyükten küçüğe şu şekilde sıralanmıştır:
+1. **TRY → USD:** 313 457,34
+2. **USD → USD:**    7 044,65
+3. **EUR → USD:**    5 986,14
+
+TRY işlemlerinin USD karşılığı açık ara en yüksek tutarı oluşturmaktadır.
+
+---
+
+## 4. Veri Örneği (İlk 5 Kayıt)
+
+| Islem ID | Cari Kodu | Cari Adı            | Para Birimi | Tutar    | Belge Tarihi         | Vade Tarihi          | İşlem Türü       | Odeme Durumu | Bakiye   |       
+|---------:|-----------|---------------------|-------------|---------:|----------------------|----------------------|------------------|--------------|---------:|       
+|        1 | MUS-074   | Bilgin San. A.Ş.    | EUR         |  6 571,18| 2023-09-24 04:32:51  | 2023-10-28 04:32:51  | Satis Faturasi   | Gecikmis     |  6 571,18|       
+|        2 | TED-090   | Migros Tedarik      | TRY         |    972,41| 2024-03-16 21:09:29  | 2024-04-21 21:09:29  | Alis Faturasi    | Odendi       |    972,41|       
+|        3 | MUS-089   | Migros A.Ş.         | TRY         |    769,56| 2024-07-25 10:45:13  | 2024-08-10 10:45:13  | Tahsilat         | Bekliyor     |   −769,56|       
+|        4 | TED-041   | Aksu Ltd. Tedarik   | USD         |    783,64| 2025-06-16 14:00:44  | 2025-08-21 14:00:44  | Alis Faturasi    | Gecikmis     |    783,64|       
+|        5 | TED-033   | Şensoy Tic. Tedarik | USD         |  2 259,59| 2024-01-27 20:38:07  | 2024-04-13 20:38:07  | Alis Faturasi    | Bekliyor     |  2 259,59|       
+
+---
+
+## 5. Öneriler
+
+1. **Otomatik Döviz Kuru Güncelleme:**
+   Döviz kurlarını günlük veya saatlik periyotlarla çekip veri tabanınıza entegre edin. Böylece raporlarınız daima güncel kurlar üzerinden hesaplanır.
+2. **Kur Riski Yönetimi (Hedging):**
+   Özellikle büyük hacimli TRY işlemlerinizde kur dalgalanmalarına karşı vadeli döviz işlemleri veya opsiyon sözleşmeleri ile riskinizi azaltın.
+3. **Standartlaştırılmış Raporlama:**
+   Tüm finansal raporlarınızı tek bir temel para birimi (USD) üzerinden oluşturun. Böylece departmanlar ve iştirakler arası karşılaştırma ve analiz kolaylaşır.
+4. **Alacak ve Gecikme İzleme:**
+   Negatif bakiye veya “Gecikmiş” ödeme durumundaki işlemlere odaklanarak tahsil süreçlerinizi hızlandırın, nakit akışınızı iyileştirin.
+
+---
+
+Bu rapor, finansal verilerinizin daha şeffaf ve karşılaştırılabilir hale gelmesi için temel bir yol haritası sunmaktadır. Keyifli analizler dileriz!
+
+
 > Prompt: Ilk 10 bakiyeyi TRY cinsinden hesapla ve goster.
 
 # İlk 10 Kayıt İçin Bakiyelerin TRY Cinsinden Dönüşümü

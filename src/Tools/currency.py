@@ -29,21 +29,27 @@ class CurrencyTool(BaseTool):
 
     def _run(self, tool_input: str):
         """Main execution method required by BaseTool. Accepts either a JSON string or dict as input."""
+        print("CurrencyTool: Running...")
         try:
+            print("CurrencyTool: Loading last request...")
             self.load_last_request(filepath=request_date)
+            print("CurrencyTool: Last request loaded...")
             # Accept both dict and JSON string
             if isinstance(tool_input, str):
                 data = json.loads(tool_input)
             else:
                 data = tool_input
+            print("CurrencyTool: Data loaded...")
             action = data.get('action')
             params = data.get('params', {})
+            print("CurrencyTool: Action and params loaded...")
 
             if action == "get_currency_data":
                 base_currency = params.get('base_currency')
                 if not base_currency:
                     return "Missing required parameter: base_currency."
                 # If last request is today and cached data exists, return cached data
+
                 if self.check_last_request() and self.api_data:
                     return self.api_data
                 # Otherwise, fetch new data
@@ -78,7 +84,8 @@ class CurrencyTool(BaseTool):
             else:
                 return f"Unknown action: {action}"
         except Exception as e:
-            return f"Error initializing CurrencyTool: {e}"
+            print(f"CurrencyTool: Error: {e}")
+            return f"Error processing input: {str(e)}"
 
     def load_last_request(self, filepath):
         with open(filepath, "r") as f:
@@ -105,6 +112,7 @@ class CurrencyTool(BaseTool):
         """
         Get the relative currency rates from the base_currency's perspective
         """
+        print("Fetching currency rates (may take a few seconds)...")
         load_dotenv()
         # Ensure base_currency is a CurrencyEnum
         if isinstance(base_currency, str):
@@ -129,7 +137,7 @@ class CurrencyTool(BaseTool):
             return response
 
         except Exception as e:
-            print(f"Error initializing currency api: {e}")
+            print(f"CurrencyTool: Error initializing currency api: {e}")
             return f"Error initializing currency api: {e}"
 
     # Example API response:
@@ -150,6 +158,7 @@ class CurrencyTool(BaseTool):
             currency_column: str or list, name(s) of the column(s) in self.df with currency codes
             money_columns: list of str, columns to convert to base currency
         """
+        print("CurrencyTool: Merging currencies...")
         if self.df is None:
             return "DataFrame is not set."
         if api_data is None or "data" not in api_data:
@@ -171,6 +180,7 @@ class CurrencyTool(BaseTool):
         """
         Check if the last request was made today. Returns False if last_request is not set.
         """
+        print("CurrencyTool: Checking last request...")
         if not hasattr(self, 'last_request') or self.last_request is None:
             return True  # Allow if never requested
         return self.last_request.date() == datetime.today().date()
