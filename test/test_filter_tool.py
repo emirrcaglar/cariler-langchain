@@ -12,6 +12,13 @@ def sample_dataframe():
     }
     return pd.DataFrame(data)
 
+def test_filter_data_float_equality():
+    df = pd.DataFrame({'Value': [10.0, 20.0, 30.0, 20.00000000000001]})
+    tool = DataFrameFilterTool(df=df)
+    tool._filter_data("Value == 20.0")
+    assert len(tool.df) == 2
+    assert 20.0 in tool.df['Value'].tolist()
+
 def test_filter_data_contains(sample_dataframe):
     tool = DataFrameFilterTool(df=sample_dataframe)
     tool._filter_data("Name contains 'li'")

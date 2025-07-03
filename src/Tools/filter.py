@@ -9,7 +9,9 @@ class DataFrameFilterTool(BaseTool):
     description: str = """Useful for transforming and filtering DataFrame data. 
     Input should be a JSON string with two keys: 
     'action' ('filter_data'), 
-    and 'params' ('columns' for select_columns, 'condition' for filter_data)."""   
+    and 'params' ('columns' for select_columns, 'condition' for filter_data).
+    DO NOT use direct equality checks for floating-point numbers due to precision issues.
+    For example, instead of `Col == 123.45`, use `Col >= 123.45 and Col < 123.46`."""
 
     df: pd.DataFrame = Field(..., description="The pandas DataFrame to filter")
     _original_df: pd.DataFrame = PrivateAttr()
@@ -36,8 +38,6 @@ class DataFrameFilterTool(BaseTool):
     def _filter_data(self, condition: str):
         """
         Standardize and filter the data.
-        Supports 'contains' operator using pandas str.contains.
-        Also supports LLM-generated .str.contains() expressions.
         """
         if self._original_df is None:
             raise ValueError("DataFrame not set. Please load the data first.")
@@ -63,16 +63,39 @@ class DataFrameFilterTool(BaseTool):
                     if op == "contains":
                         filtered = self._original_df[self._original_df[col].str.contains(re.escape(val), case=True, na=False)]
                         std_condition = f"{col}.str.contains('{val}')"
-                    elif val.replace('.', '', 1).isdigit():
-                        std_condition = f"`{col}` {op} {val}"
-                        filtered = self._original_df.query(std_condition)
+                    elif pd.api.types.is_numeric_dtype(self._original_df[col]):
+                        try:
+                            # Use val directly in the query string, pandas will handle conversion
+                            if op == "==":
+                                try:
+                                    numeric_val = float(val)
+                                    tolerance = 1e-6
+                                    std_condition = f"`{col}` >= {numeric_val - tolerance} and `{col}` <= {numeric_val + tolerance}"
+                                    filtered = self._original_df.query(std_condition)
+                                except ValueError:
+                                    # Fallback if val is not a valid number for equality check
+                                    std_condition = f"`{col}` {op} '{val}'"
+                                    filtered = self._original_df.query(std_condition)
+                            else:
+                                std_condition = f"`{col}` {op} {val}"
+                                filtered = self._original_df.query(std_condition)
+                        except Exception:
+                            # Fallback if pandas query fails (e.g., val is not a valid number)
+                            std_condition = f"`{col}` {op} '{val}'"
+                            filtered = self._original_df.query(std_condition)
                     else:
                         std_condition = f"`{col}` {op} '{val}'"
                         filtered = self._original_df.query(std_condition)
                 else:
                     # fallback: use the condition directly as a pandas query
-                    std_condition = condition
-                    filtered = self._original_df.query(std_condition)
+                    try:
+                        # Attempt to convert the entire condition to a numeric query if applicable
+                        # This is a more complex parsing, so we'll rely on pandas query for now
+                        # and ensure individual values are handled by the above logic.
+                        std_condition = condition
+                        filtered = self._original_df.query(std_condition)
+                    except Exception as e:
+                        return f"Error filtering data with condition '{condition}': {str(e)}"
             self.df = filtered
             print(f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}")
             return f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}"

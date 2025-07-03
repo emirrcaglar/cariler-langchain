@@ -1,3 +1,5 @@
+from langchain.callbacks import get_openai_callback
+
 from src.agent import agent_executor
 
 # --- Main Application Loop ---
@@ -13,9 +15,11 @@ while True:
             print(message)
         continue
 
-    result = agent_executor.invoke({
-        "input": query,
-        "chat_history": chat_history,
-    })
+    with get_openai_callback() as cb:
+        result = agent_executor.invoke({
+            "input": query,
+            "chat_history": chat_history,
+        })
 
     print(result["output"])
+    print(f"Tokens used: {cb.total_tokens}, Cost: ${cb.total_cost:.6f}")
