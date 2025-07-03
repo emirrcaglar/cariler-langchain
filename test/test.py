@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
-from src.Tools.my_tools import DataFrameFilterTool, DataFrameAggregateTool
+
+from src.Tools.filter import DataFrameFilterTool
+from src.Tools.aggregate import DataFrameAggregateTool  # Assuming this is the correct import path
 
 @pytest.fixture
 def sample_df():

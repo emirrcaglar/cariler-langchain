@@ -1,3 +1,5 @@
+"""Create a CSV file with fake cari hesap hareketleri (account movements) data."""
+
 from faker import Faker
 import pandas as pd
 import random
