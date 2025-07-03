@@ -11,7 +11,7 @@ class DataFrameAggregateTool(BaseTool):
     name: str = "dataframe_aggregator"
     description: str = """Useful for grouping and aggregating DataFrame data. 
     Input should be a JSON string with two keys: 
-    'action' ('apply_aggregation'), 
+    'action' -the function to run ('apply_aggregation'), 
     and 'params' (dictionary with 'group_by' and 'aggregation').
     'group_by' should be a list of column names to group by,
     aggregation should be a string like "min", "sum", etc.)"""
