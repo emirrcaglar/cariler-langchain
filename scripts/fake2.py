@@ -7,8 +7,10 @@ from datetime import datetime, timedelta
 
 fake = Faker('tr_TR')
 
-sirketler = [fake.company() + ' A.Ş.' for _ in range(20)]
-tedarikciler = [fake.company() + ' Tedarik' for _ in range(10)]
+ROW_COUNT = 100
+
+sirketler = [fake.company() + ' A.Ş.' for _ in range(ROW_COUNT)]
+tedarikciler = [fake.company() + ' Tedarik' for _ in range(ROW_COUNT)]
 
 def rastgele_tarih():
     return fake.date_time_between(start_date='-2y', end_date='now').strftime('%Y-%m-%d %H:%M:%S')

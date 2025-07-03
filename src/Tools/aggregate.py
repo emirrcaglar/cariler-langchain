@@ -3,6 +3,9 @@ from pydantic import Field
 from langchain.tools import BaseTool
 from typing import List, Any, Optional
 
+from src.utils import check_shrink_df
+from src.constants import MAX_ROWS
+
 
 class DataFrameAggregateTool(BaseTool):
     name: str = "dataframe_aggregator"
@@ -49,7 +52,11 @@ class DataFrameAggregateTool(BaseTool):
             return f"Columns {missing_cols} not found. Available columns: {list(self.df.columns)}"
 
         self.grouped_data = self.df.groupby(columns)
-        return f"Successfully grouped by {columns}. Now apply an aggregation function."
+
+        preview_df = self.grouped_data.size().reset_index(name='Count')
+        _, info = check_shrink_df(preview_df, MAX_ROWS, f"grouped by {columns}")
+
+        return f"Successfully grouped by {columns}.\nGroup sizes preview:\n{info}\nNow apply an aggregation function."
 
     def _apply_aggregation(self, function: str) -> str:
         """Apply aggregation to previously grouped data."""
@@ -57,6 +64,8 @@ class DataFrameAggregateTool(BaseTool):
             return "Error: You must group data first using 'group_by'."
         try:
             result_df = self.grouped_data.agg(function)
+            check_shrink_df(result_df, MAX_ROWS)
+
             return f"Aggregation result ({function}): \n {result_df.to_string()}"
         except Exception as e:
             return f"Aggregation failed: {str(e)}"

@@ -44,6 +44,8 @@ class DataFrameInspectTool(BaseTool):
         """Get the first {column_count} rows of the dataframe. Returns the rows as a string."""
         if self.df is None:
             return "DataFrame not set. Please load the data first."
+        max_rows = 20
+        column_count = min(column_count, max_rows)
         return self.df.head(column_count).to_string()
 
     def _get_info(self):

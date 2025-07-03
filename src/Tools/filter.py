@@ -3,6 +3,9 @@ import re
 from pydantic import Field, PrivateAttr
 from langchain.tools import BaseTool
 
+from src.utils import check_shrink_df
+from src.constants import MAX_ROWS
+
 
 class DataFrameFilterTool(BaseTool):
     name: str = "dataframe_transformer"
@@ -96,7 +99,12 @@ class DataFrameFilterTool(BaseTool):
                         filtered = self._original_df.query(std_condition)
                     except Exception as e:
                         return f"Error filtering data with condition '{condition}': {str(e)}"
+            if std_condition:
+                filtered, info = check_shrink_df(filtered, MAX_ROWS, std_condition)
+            else:
+                filtered, info = check_shrink_df(filtered, MAX_ROWS)
             self.df = filtered
+            return info
             print(f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}")
             return f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}"
         except Exception as e:
