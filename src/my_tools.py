@@ -2,11 +2,11 @@ from langchain.tools import BaseTool
 from langchain_chroma import Chroma
 
 import io
-import difflib
 import pandas as pd
 from pydantic import Field
 from dotenv import load_dotenv
 from typing import List, Any, Optional
+import re
 
 load_dotenv()
 
@@ -34,9 +34,9 @@ class DataFrameInspectTool(BaseTool):
             elif action == "get_info":
                 return self._get_info()
             elif action == "describe_column":
-                return self._describe_column(params['column_name'].strip())
+                return self._describe_column(params['column'].strip())
             elif action == "get_value_counts":
-                return self._get_value_counts(params['column_name'].strip())
+                return self._get_value_counts(params['column'].strip())
             return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
         except Exception as e:
             return f"Error processing input: {str(e)}"
@@ -61,88 +61,95 @@ class DataFrameInspectTool(BaseTool):
         self.df.info(buf=buffer)
         return buffer.getvalue()
 
-    def _describe_column(self, column_name: str):
+    def _describe_column(self, column: str):
         """Get descriptive statistics for a specific column (count, mean, std, min, max, etc.)"""
         if self.df is None:
             return "DataFrame not set. Please load the data first."
-        if column_name not in self.df.columns:
-            return f"Column '{column_name} not found. Available columns: {list(self.df.columns)}"
-        return self.df[column_name].describe().to_string()
+        if column not in self.df.columns:
+            return f"Column '{column} not found. Available columns: {list(self.df.columns)}"
+        return self.df[column].describe().to_string()
 
-    def _get_value_counts(self, column_name: str, normalize=False):
+    def _get_value_counts(self, column: str, normalize=False):
         """Get frequency counts of unique values in a column. Useful to know what values are present in a column and how many times they occur."""
         if self.df is None:
             return "DataFrame not set. Please load the data first."   
-        if column_name not in self.df.columns:
-            return f"Column '{column_name} not found. Available columns: {list(self.df.columns)}"   
-        return self.df[column_name].value_counts(normalize=normalize).to_string()
+        if column not in self.df.columns:
+            return f"Column '{column} not found. Available columns: {list(self.df.columns)}"   
+        return self.df[column].value_counts(normalize=normalize).to_string()
 
-
-class DataFrameTransformTool(BaseTool):
+class DataFrameFilterTool(BaseTool):
     name: str = "dataframe_transformer"
     description: str = """Useful for transforming and filtering DataFrame data. 
     Input should be a JSON string with two keys: 
-    'action' (either 'select_columns' or 'filter_data'), 
+    'action' ('filter_data'), 
     and 'params' ('columns' for select_columns, 'condition' for filter_data)."""   
 
-    df: pd.DataFrame = Field(..., description="The pandas DataFrame to transform")
-    error_memory: List[dict] = Field(default_factory=list, description="Memory to store errors for repeated inputs")
+    df: pd.DataFrame = Field(..., description="The pandas DataFrame to filter")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.error_memory: List[dict] = []
 
     def _run(self, tool_input: str) -> str:
         """Main execution method required by BaseTool"""
-        # Count how many times this input has caused an error
-        error_count = sum(1 for error in self.error_memory if error['input'] == tool_input)
-        if error_count >= 3:
-            return f"Repeated error for input: {tool_input}. Skipping after 3 errors."
         try:
             import json
             data = json.loads(tool_input)
             action = data['action']
             params = data['params']
 
-            if action == "select_columns":
-                return self._select_columns([col.strip() for col in params['columns']])
-            elif action == "filter_data":
+            if action == "filter_data":
                 return self._filter_data(params['condition'].strip())
             return "Invalid action. Use either 'group_by' or 'apply_aggregation'"
         except Exception as e:
             error_message = f"Error processing input: {str(e)}"
-            self.error_memory.append({'input': tool_input, 'error': error_message})
             return error_message
 
-    def _select_columns(self, columns: List[str]):
-        """Select listed columns. This will modify the global DataFrame to contain only these columns."""
-        if self.df is None:
-            return "DataFrame not set. Please load the data first."
-        # Normalize DataFrame columns
-        df_cols = [col.upper().replace(" ", "_") for col in self.df.columns]
-        # Normalize input columns
-        columns_norm = [col.upper().replace(" ", "_") for col in columns]
-        missing = [col for col in columns_norm if col not in df_cols]
-        if missing:
-            suggestions = []
-            for col in missing:
-                match = difflib.get_close_matches(col, df_cols, n=1)
-                if match:
-                    suggestions.append(f"{col} (did you mean {match[0]}?)")
-                else:
-                    suggestions.append(col)
-            return f"Column(s) {suggestions} not found. Available columns: {df_cols}"
-        # Select columns using original names
-        selected = [self.df.columns[df_cols.index(col)] for col in columns_norm]
-        self.df = self.df[selected]
-        return f"DataFrame updated with selected columns: {selected}.\n{self.df.to_string()}"
-
     def _filter_data(self, condition: str):
+        """
+        Standardize and filter the data.
+        Supports 'contains' operator using pandas str.contains.
+        Also supports LLM-generated .str.contains() expressions.
+        """
         if self.df is None:
             raise ValueError("DataFrame not set. Please load the data first.")
-        self.df = self.df.query(condition)
-        return f"DataFrame filtered by condition '{condition}'.\n{self.df.to_string()}"
-
+        try:
+            # Handle LLM-generated .str.contains() expressions directly
+            str_contains_pattern = r"([\w\s]+)\.str\.contains\(['\"](.+?)['\"],?\s*case\s*=\s*(True|False)?"
+            str_contains_match = re.match(str_contains_pattern, condition, re.IGNORECASE)
+            if str_contains_match:
+                col = str_contains_match.group(1).strip()
+                val = str_contains_match.group(2).strip()
+                case = str_contains_match.group(3)
+                case = False if case and case.lower() == "false" else True
+                filtered = self.df[self.df[col].str.contains(val, case=case, na=False)]
+                std_condition = f"{col}.str.contains('{val}', case={case})"
+            else:
+                # Regex to match: column op value (e.g., `Col` == 'val', Col contains val)
+                pattern = r'([`"\']?)([\w\s]+)\1\s*([=!<>]+|contains)\s*([`"\']?)([^`"\']+)\4'
+                match = re.match(pattern, condition, re.IGNORECASE)
+                if match:
+                    col = match.group(2).strip()
+                    op = match.group(3).strip().lower()
+                    val = match.group(5).strip()
+                    if op == "contains":
+                        filtered = self.df[self.df[col].str.contains(val, case=False, na=False)]
+                        std_condition = f"{col}.str.contains('{val}')"
+                    elif val.replace('.', '', 1).isdigit():
+                        std_condition = f"`{col}` {op} {val}"
+                        filtered = self.df.query(std_condition)
+                    else:
+                        std_condition = f"`{col}` {op} '{val}'"
+                        filtered = self.df.query(std_condition)
+                else:
+                    # fallback: remove backticks and double quotes, use query
+                    std_condition = re.sub(r"[`\"\\]", "", condition)
+                    filtered = self.df.query(std_condition)
+            self.df = filtered
+            print(f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}")
+            return f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}"
+        except Exception as e:
+            return f"Error filtering data with condition '{condition}': {str(e)}"
+        
 
 class DataFrameAggregateTool(BaseTool):
     name: str = "dataframe_aggregator"
