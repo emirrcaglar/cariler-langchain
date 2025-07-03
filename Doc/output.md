@@ -25,6 +25,7 @@ Veri setinde “Cari Adi” sütununda “Honda” ve “Türkiye” ifadesini i
    - Ödeme hatırlatma otomasyonları kurarak kritik vade tarihlerini gözden kaçırmayın.
    - Kısa vadede nakit akışını iyileştirmek için büyük müşterilere özel ödeme planı tekliflerini değerlendirin.
 
+##
 
 > Prompt: 7 kasim 2024 itibariyle tarihi en yakin odeme hangisi? (ileri tarihli)
 
