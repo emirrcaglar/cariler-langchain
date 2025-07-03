@@ -2,6 +2,6 @@
 .pytest_cache/
 .venv/
 chroma_db*/
-data/
+data/*.csv
 .env
 notebooks/

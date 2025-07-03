@@ -11,12 +11,15 @@ from src.Tools.filter import DataFrameFilterTool
 from src.Tools.inspect import DataFrameInspectTool
 from src.Tools.aggregate import DataFrameAggregateTool
 from src.Tools.output import ReportGeneratorTool
+from src.Tools.currency import CurrencyTool
+
+from src.constants import DATA_FILE_PATH
 
 from dotenv import load_dotenv
 load_dotenv()
 
 # --- Data and Tool Setup ---
-file_path = "data/cari_hesap_hareketleri.csv"
+file_path = DATA_FILE_PATH
 
 # 1. Initialize Vector Store
 embeddings = OpenAIEmbeddings()
@@ -56,7 +59,8 @@ tools = [
     DataFrameInspectTool(df=df),
     DataFrameFilterTool(df=df), 
     DataFrameAggregateTool(df=df), # type: ignore
-    ReportGeneratorTool(df=df)
+    ReportGeneratorTool(df=df),
+    CurrencyTool(df=df)
     ]
 
 

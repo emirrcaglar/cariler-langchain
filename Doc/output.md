@@ -1,3 +1,72 @@
+> Prompt: Ilk 10 bakiyeyi TRY cinsinden hesapla ve goster.
+
+# İlk 10 Kayıt İçin Bakiyelerin TRY Cinsinden Dönüşümü
+
+## Özet
+Verilen işlemlerin ilk 10 kaydı için “Bakiye” değerleri, güncel döviz kurları (1 TRY=0.0212282 EUR, 1 TRY=0.0250557 USD) temel alınıp ters oranlama yoluyla TRY cinsine dönüştürülmüştür. Pozitif ve negatif bakiye toplamları; ayrıca net bakiye hesaplanmıştır.
+
+---
+
+## Anahtar Metrikler
+
+| Metri̇k                    | Değer (TRY)    |
+|----------------------------|---------------:|
+| Toplam Kayıt               | 10             |
+| Pozitif Bakiye Toplamı     | 782 024,08     |
+| Negatif Bakiye Toplamı     | −282 585,26    |
+| Net Bakiye                 | 499 438,82     |
+
+---
+## Anahtar Metrikler
+
+| Metri̇k                    | Değer (TRY)    |
+|----------------------------|---------------:|
+| Toplam Kayıt               | 10             |
+| Pozitif Bakiye Toplamı     | 782 024,08     |
+| Negatif Bakiye Toplamı     | −282 585,26    |
+| Net Bakiye                 | 499 438,82     |
+
+---
+| Pozitif Bakiye Toplamı     | 782 024,08     |
+| Negatif Bakiye Toplamı     | −282 585,26    |
+| Net Bakiye                 | 499 438,82     |
+
+---
+| Net Bakiye                 | 499 438,82     |
+
+---
+
+---
+---
+
+## İlk 10 Kayıt (TRY Dönüşümlü)
+
+| Islem ID | Para Birimi | Bakiye      | Bakiye (TRY) |
+|:--------:|:-----------:|------------:|-------------:|
+| 1        | EUR         | 6 571,18    | 309 611,60   |
+| 2        | TRY         |   972,41    |   972,41     |
+| 3        | TRY         |  −769,56    |  −769,56     |
+| 4        | USD         |   783,64    |  31 275,07   |
+| 5        | USD         | 2 259,59    |  90 180,24   |
+| 6        | USD         | 2 263,16    |  90 322,72   |
+| 7        | EUR         |  −528,20    | −24 886,70   |
+| 8        | EUR         |4 253,66     |−199 645,44   |
+| 9        | EUR         |1 215,79     | −57 283,56   |
+| 10       | USD         |6 506,19     | 259 662,04   |
+
+---
+
+## Öneriler
+- **Döviz Kuru Güncellemeleri**
+  Bakiyelerin doğruluğunu sağlamak için kurların günlük/haftalık periyotlarla otomatik güncellenmesi.
+- **Risk Yönetimi**
+  Yabancı para pozisyonu riskini azaltacak hedge (kur koruma) stratejilerinin devreye alınması.
+- **Otomasyon**
+  Finansal raporlama süreçlerinde TRY dönüşümlerinin API tabanlı otomasyonla gerçekleştirilmesi.
+- **Raporlama ve İzleme**
+  Döviz kurlarındaki önemli değişikliklerin anlık bildirimlerini sağlayacak dashboard veya uyarı sistemi kurulması.
+
+
 > Prompt: Ulker hakkindaki kayitlari goster.
 ##
 # Ülker Şirketine Ait Kayıtlar Raporu
