@@ -10,6 +10,7 @@ from src.Tools.analyze import DataFrameAnalysisTool
 from src.Tools.filter import DataFrameFilterTool
 from src.Tools.inspect import DataFrameInspectTool
 from src.Tools.aggregate import DataFrameAggregateTool
+from src.Tools.output import ReportGeneratorTool
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -27,7 +28,8 @@ print(df.head())
 # 3. Initialize LLM and Tools
 llm = ChatOpenAI(
     model="o4-mini-2025-04-16",
-    max_retries=3
+    max_retries=3,
+    streaming=False,
     )
 
 conversational_memory = ConversationBufferMemory(
@@ -39,13 +41,8 @@ conversational_memory = ConversationBufferMemory(
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
     You are a data-agent who works on financial data.
-    You will work on the data with Pandas. You should first analyze the user prompt, extract parameters
-    and use them in a data filter operation using Pandas query (_filter_data() function in DataFrameTransformTool). If that fails, only then you are going to use different tools.
-    You have two types of tools:\n
-    1. A vector search tool (similarity_search) for finding relevant information in a vector store.\n
-    2. Pandas tools for inspecting a DataFrame.\n
-    Decide which tool is best to answer the user's question.\n
-    In your output, what tools you used, what was your instinct etc.
+    Generate a comprehensive markdown report summarizing your findings, including a data sample
+    and recommendations."     
     Turkish is your main output language.
      """),
     ("placeholder", "{chat_history}"),
@@ -59,9 +56,15 @@ tools = [
     DataFrameInspectTool(df=df),
     DataFrameFilterTool(df=df), 
     DataFrameAggregateTool(df=df), # type: ignore
+    ReportGeneratorTool(df=df)
     ]
 
 
 agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools,
-                                verbose=True, memory=conversational_memory)
+agent_executor = AgentExecutor(
+                            agent=agent, 
+                            tools=tools,
+                            verbose=True, 
+                            memory=conversational_memory,
+                            return_intermediate_steps=True
+                            )
