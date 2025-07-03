@@ -6,7 +6,10 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 import pandas as pd
 
 from src.vector_store import get_vectorstore
-from src.my_tools import DataFrameAggregateTool, DataFrameInspectTool, DataFrameFilterTool, DataFrameAnalysisTool
+from src.Tools.analyze import DataFrameAnalysisTool
+from src.Tools.filter import DataFrameFilterTool
+from src.Tools.inspect import DataFrameInspectTool
+from src.Tools.aggregate import DataFrameAggregateTool
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -18,6 +21,8 @@ file_path = "data/cari_hesap_hareketleri.csv"
 embeddings = OpenAIEmbeddings()
 vectorstore = get_vectorstore(file_path, embeddings)
 df = pd.read_csv(file_path, encoding="utf-8")
+print("DataFrame head after loading CSV:")
+print(df.head())
 
 # 3. Initialize LLM and Tools
 llm = ChatOpenAI(

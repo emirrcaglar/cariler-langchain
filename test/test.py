@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from src.my_tools import DataFrameTransformTool, DataFrameAggregateTool
+from src.Tools.my_tools import DataFrameFilterTool, DataFrameAggregateTool
 
 @pytest.fixture
 def sample_df():
@@ -10,20 +10,20 @@ def sample_df():
     })
 
 def test_select_columns(sample_df):
-    tool = DataFrameTransformTool(df=sample_df)
+    tool = DataFrameFilterTool(df=sample_df)
     input_json = '{"action": "select_columns", "params": {"columns": ["A"]}}'
     result = tool._run(input_json)
     assert "DataFrame updated" in result
     assert list(tool.df.columns) == ["A"]
 
 def test_filter_data(sample_df):
-    tool = DataFrameTransformTool(df=sample_df)
+    tool = DataFrameFilterTool(df=sample_df)
     input_json = '{"action": "filter_data", "params": {"condition": "A > 1"}}'
     result = tool._run(input_json)
     assert "filtered by condition" in result
 
 def test_error_memory(sample_df):
-    tool = DataFrameTransformTool(df=sample_df)
+    tool = DataFrameFilterTool(df=sample_df)
     bad_input = '{"action": "filter_data", "params": {"condition": "BAD SYNTAX"}}'
     # Run 3 times to accumulate errors
     tool._run(bad_input)
