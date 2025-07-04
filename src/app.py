@@ -1,5 +1,3 @@
-from langchain.callbacks import get_openai_callback
-
 from src.agent import agent_executor
 
 # --- Main Application Loop ---
@@ -20,6 +18,7 @@ while True:
         "input": query,
         "chat_history": chat_history,
     })
+
     print("App: Agent invoke end...")
     print("App: Agent output:")
     print(result["output"])
