@@ -13,7 +13,7 @@ from src.Tools.output import ReportGeneratorTool
 from src.Tools.currency import CurrencyTool
 
 from src.vector_store import get_vectorstore
-from src.constants import DATA_FILE_PATH
+from src.constants import DATA_FILE_PATH, AI_MODEL
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -30,7 +30,7 @@ print(df.head())
 
 # 3. Initialize LLM and Tools
 llm = ChatOpenAI(
-    model="o4-mini-2025-04-16",
+    model=AI_MODEL,
     max_retries=3,
     streaming=False,
     )

@@ -1,58 +1,55 @@
 from enum import Enum
 from typing import Optional
+import json
+
 from langchain.tools import BaseTool
-from pydantic import Field
+
+from pydantic import Field, BaseModel
 from dotenv import load_dotenv
+from datetime import datetime
 import requests
 import os, getpass
 import pandas as pd
-from datetime import datetime
 from src.constants import request_date
-import json
 
 class CurrencyEnum(str, Enum):
     EUR = "EUR"
     USD = "USD"
     TRY = "TRY"
 
+class CurrencyToolInput(BaseModel):
+    action: str = Field(description="The action to perform, either 'get_currency_data' or 'merge_currencies'.")
+    base_currency: CurrencyEnum = Field(description="The base currency to use for conversions. Required for both 'get_currency_data' and 'merge_currencies'.")
+    currency_column: Optional[str] = Field(default=None, description="The name of the column containing currency codes. Required for 'merge_currencies'.")
+    money_columns: Optional[list[str]] = Field(default=None, description="A list of column names containing monetary values to be converted. Required for 'merge_currencies'.")
+
 class CurrencyTool(BaseTool):
+    args_schema = CurrencyToolInput
     name: str = "currency_tool"
-    description: str = """Converts currencies, merges them into selected one. 
-    Try get_currency_data first, as it will fetch data to merge.
-    Input should be a JSON string with two keys: 
-    'action' ('get_currency_data' or 'merge_currencies'), 
-    and 'params' (dictionary with 'base_currency', )."""
+    description: str = """A tool for currency conversion and merging.
+    
+    Actions:
+    - 'get_currency_data': Fetches currency exchange rates. Requires 'base_currency'.
+    - 'merge_currencies': Merges currencies in a DataFrame. Requires 'base_currency', 'currency_column', and 'money_columns'.
+    
+    Before merging, you must first run 'get_currency_data' to fetch the necessary exchange rates.
+    """
     base_currency: Optional[CurrencyEnum] = Field(default=None, description="The main currency which others will be merged into")
     df: Optional[pd.DataFrame] = Field(default=None, description="The dataframe which's currencies will be merged")
     api_data: Optional[dict] = Field(default=None, description="The api data that is fetched with get_currency_data")
     last_request: Optional[datetime] = Field(default=None, description="The last time currency data was requested")
 
-    def _run(self, tool_input: str):
-        """Main execution method required by BaseTool. Accepts either a JSON string or dict as input."""
+    def _run(self, action: str, base_currency: CurrencyEnum, currency_column: Optional[str] = None, money_columns: Optional[list[str]] = None):
+        """Main execution method required by BaseTool."""
         print("CurrencyTool: Running...")
         try:
             print("CurrencyTool: Loading last request...")
             self.load_last_request(filepath=request_date)
             print("CurrencyTool: Last request loaded...")
-            # Accept both dict and JSON string
-            if isinstance(tool_input, str):
-                data = json.loads(tool_input)
-            else:
-                data = tool_input
-            print("CurrencyTool: Data loaded...")
-            action = data.get('action')
-            params = data.get('params', {})
-            print("CurrencyTool: Action and params loaded...")
 
             if action == "get_currency_data":
-                base_currency = params.get('base_currency')
-                if not base_currency:
-                    return "Missing required parameter: base_currency."
-                # If last request is today and cached data exists, return cached data
-
                 if self.check_last_request() and self.api_data:
                     return self.api_data
-                # Otherwise, fetch new data
                 data = self._get_currency_data(base_currency)
                 if data and isinstance(data, requests.Response):
                     self.api_data = data.json()
@@ -64,23 +61,34 @@ class CurrencyTool(BaseTool):
                     return self.api_data
                 else:
                     return data
+            
             elif action == "merge_currencies":
+                self.base_currency = base_currency
                 if self.api_data is None:
-                    return "No currency data available. Please fetch currency data first."
-                currency_column = params.get('currency_column')
-                money_columns = params.get('money_columns')
+                    # If api_data is not available, fetch it first
+                    print("Currency data not found, fetching...")
+                    data = self._get_currency_data(base_currency)
+                    if data and isinstance(data, requests.Response):
+                        self.api_data = data.json()
+                        self.write_last_request(filepath=request_date, data=self.api_data)
+                    elif isinstance(data, dict):
+                        self.api_data = data
+                        self.write_last_request(filepath=request_date, data=self.api_data)
+                    else:
+                        return data # Return error from fetch
+
                 if not currency_column or not money_columns:
                     return "Missing required parameters: currency_column and/or money_columns."
                 if self.df is None:
                     return "No DataFrame available. Please provide a DataFrame."
-                if self.base_currency is None:
-                    return "No base_currency set. Please provide a base_currency."
+                
                 result_df = self._merge_currencies(
                     self.api_data, 
                     currency_column, 
                     money_columns
                 )
                 return result_df
+
             else:
                 return f"Unknown action: {action}"
         except Exception as e:
@@ -95,6 +103,11 @@ class CurrencyTool(BaseTool):
                 self.last_request = datetime.fromisoformat(value)
             else:
                 self.last_request = None
+            base_currency_str = data.get("base_currency")
+            if base_currency_str:
+                self.base_currency = CurrencyEnum(base_currency_str)
+            else:
+                self.base_currency = None
             self.api_data = data.get("data")
     
     def write_last_request(self, filepath, data=None):
@@ -103,10 +116,20 @@ class CurrencyTool(BaseTool):
         """
         payload = {
             "currency_api": self.last_request.isoformat() if self.last_request else None,
+            "base_currency": self.base_currency.value if self.base_currency else None,
             "data": data if data is not None else {}
         }
         with open(filepath, "w") as f:
             json.dump(payload, f, indent=2)
+
+    def check_last_request(self):
+        """
+        Check if the last request was made today. Returns False if last_request is not set.
+        """
+        print("CurrencyTool: Checking last request...")
+        if not hasattr(self, 'last_request') or self.last_request is None:
+            return True  # Allow if never requested
+        return self.last_request.date() == datetime.today().date()
 
     def _get_currency_data(self, base_currency):
         """
@@ -140,15 +163,6 @@ class CurrencyTool(BaseTool):
             print(f"CurrencyTool: Error initializing currency api: {e}")
             return f"Error initializing currency api: {e}"
 
-    # Example API response:
-    # {
-    #   "data": {
-    #     "EUR": 0.8472401461,
-    #     "TRY": 39.911076514,
-    #     "USD": 1
-    #   }
-    # } 
-
     def _merge_currencies(self, api_data, currency_column, money_columns):
         """
         Adds a 'rate' column to the DataFrame by mapping currency codes to rates,
@@ -175,15 +189,3 @@ class CurrencyTool(BaseTool):
         for col in money_columns:
             self.df[f"{col}_in_{self.base_currency.value if self.base_currency else 'BASE'}"] = self.df[col] * self.df["rate"]
         return self.df
-
-    def check_last_request(self):
-        """
-        Check if the last request was made today. Returns False if last_request is not set.
-        """
-        print("CurrencyTool: Checking last request...")
-        if not hasattr(self, 'last_request') or self.last_request is None:
-            return True  # Allow if never requested
-        return self.last_request.date() == datetime.today().date()
-    
-
-    

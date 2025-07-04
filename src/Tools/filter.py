@@ -45,68 +45,20 @@ class DataFrameFilterTool(BaseTool):
         if self._original_df is None:
             raise ValueError("DataFrame not set. Please load the data first.")
         try:
-            # Handle LLM-generated .str.contains() expressions directly
-            str_contains_pattern = r"""([\w\s]+)\.str\.contains\((['"])(.+?)\2(?:,\s*case\s*=\s*(True|False))?\)"""
-            str_contains_match = re.match(str_contains_pattern, condition, re.IGNORECASE)
-            if str_contains_match:
-                col = str_contains_match.group(1).strip()
-                val = str_contains_match.group(3).strip()
-                case = str_contains_match.group(4)
-                case = False if case and case.lower() == "false" else True
-                filtered = self._original_df[self._original_df[col].str.contains(val, case=case, na=False)]
-                std_condition = f"{col}.str.contains('{val}', case={case})"
-            else:
-                # Regex to match: column op value (e.g., `Col` == 'val', Col contains val)
-                pattern = r"([`\"']?)([\w\s]+)\1\s*([=!<>]+|contains)\s*([`\"']?)([^`\"']+)\4"
-                match = re.match(pattern, condition, re.IGNORECASE)
-                if match:
-                    col = match.group(2).strip()
-                    op = match.group(3).strip().lower()
-                    val = match.group(5).strip()
-                    if op == "contains":
-                        filtered = self._original_df[self._original_df[col].str.contains(re.escape(val), case=True, na=False)]
-                        std_condition = f"{col}.str.contains('{val}')"
-                    elif pd.api.types.is_numeric_dtype(self._original_df[col]):
-                        try:
-                            # Use val directly in the query string, pandas will handle conversion
-                            if op == "==":
-                                try:
-                                    numeric_val = float(val)
-                                    tolerance = 1e-6
-                                    std_condition = f"`{col}` >= {numeric_val - tolerance} and `{col}` <= {numeric_val + tolerance}"
-                                    filtered = self._original_df.query(std_condition)
-                                except ValueError:
-                                    # Fallback if val is not a valid number for equality check
-                                    std_condition = f"`{col}` {op} '{val}'"
-                                    filtered = self._original_df.query(std_condition)
-                            else:
-                                std_condition = f"`{col}` {op} {val}"
-                                filtered = self._original_df.query(std_condition)
-                        except Exception:
-                            # Fallback if pandas query fails (e.g., val is not a valid number)
-                            std_condition = f"`{col}` {op} '{val}'"
-                            filtered = self._original_df.query(std_condition)
-                    else:
-                        std_condition = f"`{col}` {op} '{val}'"
-                        filtered = self._original_df.query(std_condition)
-                else:
-                    # fallback: use the condition directly as a pandas query
-                    try:
-                        # Attempt to convert the entire condition to a numeric query if applicable
-                        # This is a more complex parsing, so we'll rely on pandas query for now
-                        # and ensure individual values are handled by the above logic.
-                        std_condition = condition
-                        filtered = self._original_df.query(std_condition)
-                    except Exception as e:
-                        return f"Error filtering data with condition '{condition}': {str(e)}"
+            # Enclose column names with spaces in backticks
+            for col in self._original_df.columns:
+                if ' ' in col and f'`{col}`' not in condition:
+                    condition = condition.replace(col, f'`{col}`')
+
+            filtered = self._original_df.query(condition)
+            std_condition = condition
+
             if std_condition:
                 filtered, info = check_shrink_df(filtered, MAX_ROWS, std_condition)
             else:
                 filtered, info = check_shrink_df(filtered, MAX_ROWS)
             self.df = filtered
             return info
-            print(f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}")
-            return f"DataFrame filtered by standardized condition '{std_condition}'.\n{self.df.to_string()}"
         except Exception as e:
             return f"Error filtering data with condition '{condition}': {str(e)}"
 

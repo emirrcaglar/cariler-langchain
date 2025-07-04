@@ -37,14 +37,12 @@ def test_merge_currencies(dummy_df, mock_api_data):
 
 def test_run_merge_action(dummy_df, mock_api_data):
     tool = CurrencyTool(df=dummy_df.copy(), base_currency=CurrencyEnum.USD, api_data=mock_api_data)
-    tool_input = {
-        'action': 'merge_currencies',
-        'params': {
-            'currency_column': 'currency',
-            'money_columns': ['amount']
-        }
-    }
-    result = tool._run(tool_input)
+    result = tool._run(
+        action='merge_currencies',
+        base_currency=CurrencyEnum.USD,
+        currency_column='currency',
+        money_columns=['amount']
+    )
     if not isinstance(result, pd.DataFrame):
         pytest.skip(f"Tool returned error: {result}")
         return
