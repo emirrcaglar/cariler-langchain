@@ -13,7 +13,7 @@ class DataFrameFilterTool(BaseTool):
     Input should be a JSON string with two keys: 
     'action' ('filter_data'), 
     and 'params' ('columns' for select_columns, 'condition' for filter_data).
-    Prioritize filtering with the `contains` keyword.
+    Prioritize filtering with the `contains()` function.
     DO NOT use direct equality checks for floating-point numbers due to precision issues.
     For example, instead of `Col == 123.45`, use `Col >= 123.45 and Col < 123.46`."""
 

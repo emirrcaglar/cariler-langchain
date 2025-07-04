@@ -57,7 +57,7 @@ class DataFrameInspectTool(BaseTool):
         return buffer.getvalue()
 
     def _describe_column(self, column: str):
-        """Get descriptive statistics for a specific column (count, mean, std, min, max, etc.)"""
+        """Get descriptive statistics for a specific numeric column (count, mean, std, min, max, etc.)"""
         if self.df is None:
             return "DataFrame not set. Please load the data first."
         if column not in self.df.columns:
@@ -69,5 +69,10 @@ class DataFrameInspectTool(BaseTool):
         if self.df is None:
             return "DataFrame not set. Please load the data first."   
         if column not in self.df.columns:
-            return f"Column '{column} not found. Available columns: {list(self.df.columns)}"   
-        return self.df[column].value_counts(normalize=normalize).to_string()
+            return f"Column '{column} not found. Available columns: {list(self.df.columns)}"
+        value_counts = self.df[column].value_counts(normalize=normalize)
+        if len(value_counts) > 20:
+            value_counts = value_counts.head(20)
+            return f"The dataframe was too big, it's shrunk to 20 rows. {value_counts.to_string()}"
+        return value_counts.to_string()
+    

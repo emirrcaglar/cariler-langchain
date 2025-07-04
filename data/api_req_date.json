@@ -1,6 +1,7 @@
 {
   "currency_api": "2025-07-04T11:24:56.418127",
   "data": {
+    "base_currency": "TRY",
     "data": {
       "EUR": 0.0213510978,
       "TRY": 1,

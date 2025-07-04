@@ -10,6 +10,8 @@ from datetime import datetime
 import requests
 import os, getpass
 import pandas as pd
+
+from src.utils import check_shrink_df
 from src.constants import request_date
 
 class CurrencyEnum(str, Enum):
@@ -30,7 +32,7 @@ class CurrencyTool(BaseTool):
     
     Actions:
     - 'get_currency_data': Fetches currency exchange rates. Requires 'base_currency'.
-    - 'merge_currencies': Merges currencies in a DataFrame. Requires 'base_currency', 'currency_column', and 'money_columns'.
+    - 'merge_currencies': Merges currencies in a DataFrame. Requires 'base_currency', 'currency_column', and 'money_columns' and 'row_count'.
     
     Before merging, you must first run 'get_currency_data' to fetch the necessary exchange rates.
     """
@@ -87,6 +89,7 @@ class CurrencyTool(BaseTool):
                     currency_column, 
                     money_columns
                 )
+                result_df, info = check_shrink_df(result_df, 10)
                 return result_df
 
             else:

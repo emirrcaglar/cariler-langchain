@@ -31,5 +31,7 @@ class DataFrameAnalysisTool(BaseTool):
         """Perform a similarity search on the vector store for a given query."""
         if self.vectorstore is None:
             return "Vectorstore not set. Please load the data first."
+        if k > 10:
+            k = 10
         results = self.vectorstore.similarity_search(query, k=k)
         return "\n".join([doc.page_content for doc in results])

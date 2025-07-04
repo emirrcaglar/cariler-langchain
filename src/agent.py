@@ -48,6 +48,7 @@ prompt = ChatPromptTemplate.from_messages([
     and recommendations.
     Use iterative refinement. Start small, build the data after understanding the smaller parts.
     Always inspect unique values before filtering.
+    You MUST handle all grouping / filtering operations before doing any conversions, printing, currency ops. etc.
     Turkish is your main output language.
      """),
     ("placeholder", "{chat_history}"),
