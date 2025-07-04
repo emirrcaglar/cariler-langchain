@@ -70,5 +70,4 @@ agent_executor = AgentExecutor(
                             tools=tools,
                             verbose=True, 
                             memory=conversational_memory,
-                            return_intermediate_steps=True
                             )
